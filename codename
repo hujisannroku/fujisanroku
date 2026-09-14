@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>暗号語 - コードネーム風ゲーム</title>
+<style>
+  :root {
+    --bg: #1b232f;
+    --panel: #232e3d;
+    --panel2: #1f2836;
+    --cream: #ece4d0;
+    --ink: #eae3d3;
+    --red: #b8453a;
+    --red-dark: #7c2d26;
+    --blue: #3d6ea5;
+    --blue-dark: #274a70;
+    --neutral: #c8b998;
+    --neutral-ink: #3a3226;
+    --assassin: #14181d;
+    --gold: #cf9d4c;
+    --line: rgba(234,227,211,0.14);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+    min-height: 100vh;
+  }
+  .wrap {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 28px 18px 60px;
+  }
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 18px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 14px;
+  }
+  h1 {
+    font-family: "Hiragino Mincho ProN", "Shippori Mincho", serif;
+    font-weight: 600;
+    font-size: 26px;
+    letter-spacing: 0.04em;
+    margin: 0;
+    color: var(--gold);
+  }
+  .sub {
+    font-size: 12px;
+    color: rgba(234,227,211,0.55);
+    margin-top: 4px;
+  }
+
+  /* mode bar */
+  .mode-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .mode-label {
+    font-size: 13px;
+    color: rgba(234,227,211,0.65);
+  }
+  .mode-label strong {
+    color: var(--gold);
+    font-weight: 700;
+  }
+  .mode-switch {
+    display: flex;
+    gap: 8px;
+  }
+  .mode-switch button {
+    background: var(--panel);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    padding: 8px 14px;
+    border-radius: 5px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .mode-switch button.active {
+    background: var(--gold);
+    color: #1b232f;
+    border-color: var(--gold);
+    font-weight: 700;
+  }
+  .mode-switch button:hover:not(.active) { border-color: var(--gold); }
+
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+  .turn-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 16px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background 0.25s ease, color 0.25s ease;
+  }
+  .turn-pill.red { background: var(--red); color: #fff; }
+  .turn-pill.blue { background: var(--blue); color: #fff; }
+  .turn-pill .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: rgba(255,255,255,0.85);
+  }
+  .scores {
+    display: flex;
+    gap: 14px;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  .score {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .score .sw { width: 11px; height: 11px; border-radius: 3px; }
+  .score.red .sw { background: var(--red); }
+  .score.blue .sw { background: var(--blue); }
+
+  /* hint display (operative view) */
+  .hint-current {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    border-radius: 8px;
+    background: var(--panel);
+    border-left: 4px solid var(--gold);
+    margin-bottom: 18px;
+  }
+  .hint-current .hint-word {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+  }
+  .hint-current .hint-num {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--gold);
+    background: rgba(207,157,76,0.12);
+    border-radius: 6px;
+    padding: 2px 10px;
+    min-width: 30px;
+    text-align: center;
+  }
+  .hint-current .hint-team-tag {
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-weight: 700;
+  }
+  .hint-current .hint-team-tag.red { background: var(--red); color: #fff; }
+  .hint-current .hint-team-tag.blue { background: var(--blue); color: #fff; }
+  .hint-current.empty {
+    color: rgba(234,227,211,0.5);
+    font-size: 14px;
+    border-left-color: var(--line);
+  }
+
+  /* hint composer (spymaster view) */
+  .hint-composer {
+    background: var(--panel);
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin-bottom: 18px;
+  }
+  .hint-composer .composer-title {
+    font-size: 13px;
+    margin-bottom: 10px;
+    color: rgba(234,227,211,0.7);
+  }
+  .composer-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .composer-row input[type="text"] {
+    flex: 1 1 160px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    padding: 9px 12px;
+    border-radius: 5px;
+    font-size: 14px;
+  }
+  .composer-row select {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    padding: 9px 10px;
+    border-radius: 5px;
+    font-size: 14px;
+  }
+  .composer-row button {
+    background: var(--gold);
+    color: #1b232f;
+    border: none;
+    padding: 9px 18px;
+    border-radius: 5px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .composer-row button:hover { filter: brightness(1.08); }
+  .composer-note {
+    font-size: 11px;
+    color: rgba(234,227,211,0.45);
+    margin-top: 8px;
+  }
+
+  /* hint history */
+  .hint-history {
+    margin-bottom: 18px;
+  }
+  .hint-history summary {
+    cursor: pointer;
+    font-size: 12px;
+    color: rgba(234,227,211,0.55);
+    margin-bottom: 8px;
+  }
+  .hint-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 6px;
+  }
+  .hint-history-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    padding: 6px 10px;
+    background: var(--panel2);
+    border-radius: 5px;
+  }
+  .hint-history-item .tag {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-weight: 700;
+  }
+  .hint-history-item .tag.red { background: var(--red); color: #fff; }
+  .hint-history-item .tag.blue { background: var(--blue); color: #fff; }
+
+  .board {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .card {
+    position: relative;
+    aspect-ratio: 3 / 2;
+    background: var(--cream);
+    color: #2a2620;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    border: none;
+    outline: none;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.25);
+    user-select: none;
+  }
+  .card:hover:not(.revealed) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  }
+  .card.revealed { cursor: default; }
+  .card.revealed.red { background: var(--red); color: #fff; }
+  .card.revealed.blue { background: var(--blue); color: #fff; }
+  .card.revealed.neutral { background: var(--neutral); color: var(--neutral-ink); }
+  .card.revealed.assassin { background: var(--assassin); color: #d9d4c8; }
+  .card.spy-mode { cursor: default; }
+
+  .card.peek::after {
+    content: "";
+    position: absolute;
+    bottom: 5px; left: 5px; right: 5px;
+    height: 5px;
+    border-radius: 3px;
+  }
+  .card.peek.red::after { background: var(--red); }
+  .card.peek.blue::after { background: var(--blue); }
+  .card.peek.neutral::after { background: var(--neutral); }
+  .card.peek.assassin::after { background: var(--assassin); }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+  button.new-game {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--line);
+    padding: 9px 20px;
+    border-radius: 5px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+  }
+  button.new-game:hover { border-color: var(--gold); color: var(--gold); }
+
+  .message {
+    margin-top: 16px;
+    padding: 12px 16px;
+    border-radius: 6px;
+    background: var(--panel);
+    font-size: 14px;
+    border-left: 3px solid var(--gold);
+    min-height: 18px;
+  }
+  .message.win-red { border-left-color: var(--red); color: #f2c9c4; }
+  .message.win-blue { border-left-color: var(--blue); color: #c6d9ec; }
+  .message.assassin { border-left-color: #888; color: #d9d4c8; }
+
+  /* handoff overlay */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    flex-direction: column;
+    gap: 22px;
+    padding: 24px;
+    text-align: center;
+  }
+  .overlay.hidden { display: none; }
+  .overlay .tag {
+    display: inline-block;
+    padding: 8px 20px;
+    border-radius: 999px;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .overlay .tag.red { background: var(--red); color: #fff; }
+  .overlay .tag.blue { background: var(--blue); color: #fff; }
+  .overlay p {
+    font-size: 14px;
+    color: rgba(234,227,211,0.6);
+    max-width: 320px;
+    line-height: 1.7;
+    margin: 0;
+  }
+  .overlay button {
+    background: var(--gold);
+    color: #1b232f;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  @media (max-width: 560px) {
+    .card { font-size: 12px; }
+    h1 { font-size: 21px; }
+    .hint-current .hint-word { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+<div id="overlay" class="overlay hidden">
+  <span id="overlayTag" class="tag red">スパイマスター</span>
+  <p id="overlayText">画面をスパイマスター担当の人に渡してください。回答者には見せないでください。</p>
+  <button id="overlayBtn">準備ができました - 表示する</button>
+</div>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>暗号語</h1>
+      <div class="sub">CODENAMES風・スパイマスター/回答者 画面分割プレイ</div>
+    </div>
+  </header>
+
+  <div class="mode-bar">
+    <div class="mode-label">現在の画面: <strong id="modeLabel">スパイマスター</strong></div>
+    <div class="mode-switch">
+      <button id="btnSpy">スパイマスター画面</button>
+      <button id="btnOp">回答者画面</button>
+    </div>
+  </div>
+
+  <div class="status-row">
+    <div id="turnPill" class="turn-pill red"><span class="dot"></span><span id="turnText">赤チームの番</span></div>
+    <div class="scores">
+      <div class="score red"><span class="sw"></span><span id="redScore">9</span> 残り</div>
+      <div class="score blue"><span class="sw"></span><span id="blueScore">8</span> 残り</div>
+    </div>
+  </div>
+
+  <!-- operative view: current hint -->
+  <div id="hintCurrent" class="hint-current empty">まだヒントが送られていません。</div>
+
+  <!-- spymaster view: composer -->
+  <div id="hintComposer" class="hint-composer" style="display:none;">
+    <div class="composer-title">今のチーム(<span id="composerTeamLabel">赤</span>)にヒントを送る</div>
+    <div class="composer-row">
+      <input type="text" id="hintWordInput" placeholder="お題の単語" maxlength="20">
+      <select id="hintNumInput">
+        <option value="0">0(無制限)</option>
+        <option value="1">1</option>
+        <option value="2" selected>2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+        <option value="7">7</option>
+        <option value="8">8</option>
+        <option value="9">9</option>
+      </select>
+      <button id="sendHintBtn">ヒントを送る</button>
+    </div>
+    <div class="composer-note">送ったヒントは回答者画面に表示されます。ボード上の単語そのものは送れません。</div>
+  </div>
+
+  <details class="hint-history" id="hintHistoryWrap" style="display:none;">
+    <summary>これまでのヒント履歴</summary>
+    <div class="hint-history-list" id="hintHistoryList"></div>
+  </details>
+
+  <div id="board" class="board"></div>
+
+  <div class="controls">
+    <button class="new-game" id="newGameBtn">新しいゲーム</button>
+  </div>
+
+  <div class="message" id="message">カードをクリックして単語を選んでください。自分のチームの色なら続けて選べます。</div>
+</div>
+
+<script>
+const WORD_POOL = [
+  "犬","猫","山","川","海","空","月","星","花","木","机","椅子","本","鉛筆","窓",
+  "ドア","時計","鏡","傘","靴","帽子","鞄","電話","鍵","箱","橋","電車","飛行機","船","自転車",
+  "太陽","雨","雪","風","氷","火","水","土","石","砂","城","塔","森","湖","島",
+  "王","女王","騎士","竜","蛇","鳥","魚","象","虎","熊","狐","蜂","蝶","蜘蛛","亀",
+  "米","茶","塩","砂糖","卵","牛乳","パン","肉","魚介","果物","野菜","薬","針","糸","布",
+  "紙","絵","歌","踊り","劇","映画","音楽","楽器","太鼓","笛","鐘","旗","地図","星座","彗星",
+  "宇宙","惑星","病院","学校","銀行","駅","公園","市場","工場","農場","畑","牧場","庭","寺","神社"
+];
+
+let board = [];      // {word, role, revealed}
+let currentTeam = "red";
+let redRemaining = 0;
+let blueRemaining = 0;
+let gameOver = false;
+let mode = "spymaster";   // "spymaster" | "operative"
+let hints = [];       // {team, word, number}
+let currentHintNumber = 0;  // 現在有効なヒントの指定枚数(0=無制限)
+let correctGuessCount = 0;  // 現在のヒントで正解した枚数
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function newGame() {
+  gameOver = false;
+  currentTeam = Math.random() < 0.5 ? "red" : "blue";
+  hints = [];
+  currentHintNumber = 0;
+  correctGuessCount = 0;
+
+  const words = shuffle(WORD_POOL).slice(0, 25);
+
+  const startCount = 9;
+  const otherCount = 8;
+  const neutralCount = 7;
+  const assassinCount = 1;
+
+  let roles = [];
+  roles = roles.concat(Array(startCount).fill(currentTeam));
+  roles = roles.concat(Array(otherCount).fill(currentTeam === "red" ? "blue" : "red"));
+  roles = roles.concat(Array(neutralCount).fill("neutral"));
+  roles = roles.concat(Array(assassinCount).fill("assassin"));
+  roles = shuffle(roles);
+
+  board = words.map((word, i) => ({ word, role: roles[i], revealed: false }));
+
+  redRemaining = board.filter(c => c.role === "red").length;
+  blueRemaining = board.filter(c => c.role === "blue").length;
+
+  setMessage(`${currentTeam === "red" ? "赤" : "青"}チームが先攻です。スパイマスターはヒントを送ってください。`, "");
+  mode = "spymaster";
+  render();
+}
+
+function setMessage(text, cls) {
+  const el = document.getElementById("message");
+  el.textContent = text;
+  el.className = "message" + (cls ? " " + cls : "");
+}
+
+function updateStatus() {
+  document.getElementById("redScore").textContent = redRemaining;
+  document.getElementById("blueScore").textContent = blueRemaining;
+  const pill = document.getElementById("turnPill");
+  const text = document.getElementById("turnText");
+  pill.className = "turn-pill " + currentTeam;
+  text.textContent = (currentTeam === "red" ? "赤" : "青") + "チームの番";
+}
+
+function handleReveal(cell) {
+  if (gameOver || cell.revealed || mode !== "operative") return;
+  cell.revealed = true;
+
+  if (cell.role === "assassin") {
+    gameOver = true;
+    render();
+    setMessage(`暗殺者のカードでした。${currentTeam === "red" ? "赤" : "青"}チームの負けです。`, "assassin");
+    return;
+  }
+
+  if (cell.role === "red") redRemaining--;
+  if (cell.role === "blue") blueRemaining--;
+
+  if (redRemaining === 0) {
+    gameOver = true;
+    render();
+    setMessage("赤チームの単語をすべて当てました。赤チームの勝利です！", "win-red");
+    return;
+  }
+  if (blueRemaining === 0) {
+    gameOver = true;
+    render();
+    setMessage("青チームの単語をすべて当てました。青チームの勝利です！", "win-blue");
+    return;
+  }
+
+  if (cell.role !== currentTeam) {
+    currentTeam = currentTeam === "red" ? "blue" : "red";
+    setMessage(
+      cell.role === "neutral"
+        ? "中立の単語でした。手番が交代します。"
+        : "相手チームの単語でした。手番が交代します。",
+      ""
+    );
+  } else {
+    correctGuessCount++;
+    if (currentHintNumber > 0 && correctGuessCount >= currentHintNumber) {
+      currentTeam = currentTeam === "red" ? "blue" : "red";
+      setMessage("指定された枚数を選び終えました。手番が交代します。", "");
+    } else {
+      setMessage("正解です。同じチームがもう一度選べます。", "");
+    }
+  }
+
+  updateStatus();
+  render();
+}
+
+function sendHint() {
+  const wordInput = document.getElementById("hintWordInput");
+  const numInput = document.getElementById("hintNumInput");
+  const word = wordInput.value.trim();
+  if (!word) return;
+
+  const lowerWord = word.toLowerCase();
+  const clashesWithBoard = board.some(c => c.word.toLowerCase() === lowerWord);
+  if (clashesWithBoard) {
+    setMessage("ボード上にある単語そのものはヒントにできません。別の単語にしてください。", "");
+    return;
+  }
+
+  hints.push({ team: currentTeam, word, number: numInput.value });
+  currentHintNumber = parseInt(numInput.value, 10) || 0;
+  correctGuessCount = 0;
+  wordInput.value = "";
+  renderHints();
+}
+
+function renderHints() {
+  const current = hints.length ? hints[hints.length - 1] : null;
+  const currentEl = document.getElementById("hintCurrent");
+  if (current) {
+    currentEl.className = "hint-current";
+    currentEl.innerHTML =
+      `<span class="hint-team-tag ${current.team}">${current.team === "red" ? "赤" : "青"}</span>` +
+      `<span class="hint-word">${escapeHtml(current.word)}</span>` +
+      `<span class="hint-num">${current.number === "0" ? "∞" : current.number}</span>`;
+  } else {
+    currentEl.className = "hint-current empty";
+    currentEl.textContent = "まだヒントが送られていません。";
+  }
+
+  const historyWrap = document.getElementById("hintHistoryWrap");
+  const historyList = document.getElementById("hintHistoryList");
+  if (hints.length > 1) {
+    historyWrap.style.display = "block";
+    historyList.innerHTML = hints
+      .slice(0, -1)
+      .reverse()
+      .map(h => `<div class="hint-history-item"><span class="tag ${h.team}">${h.team === "red" ? "赤" : "青"}</span><span>${escapeHtml(h.word)} - ${h.number === "0" ? "∞" : h.number}</span></div>`)
+      .join("");
+  } else {
+    historyWrap.style.display = "none";
+  }
+
+  document.getElementById("composerTeamLabel").textContent = currentTeam === "red" ? "赤" : "青";
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function render() {
+  const boardEl = document.getElementById("board");
+  boardEl.innerHTML = "";
+
+  board.forEach((cell) => {
+    const btn = document.createElement("button");
+    btn.className = "card";
+    if (cell.revealed) {
+      btn.classList.add("revealed", cell.role);
+    } else if (mode === "spymaster") {
+      btn.classList.add("peek", cell.role, "spy-mode");
+    }
+    btn.textContent = cell.word;
+    btn.addEventListener("click", () => handleReveal(cell));
+    boardEl.appendChild(btn);
+  });
+
+  document.getElementById("hintComposer").style.display = mode === "spymaster" ? "block" : "none";
+  document.getElementById("hintCurrent").style.display = mode === "operative" ? "flex" : "none";
+  document.getElementById("modeLabel").textContent = mode === "spymaster" ? "スパイマスター" : "回答者";
+  document.getElementById("btnSpy").classList.toggle("active", mode === "spymaster");
+  document.getElementById("btnOp").classList.toggle("active", mode === "operative");
+
+  renderHints();
+  updateStatus();
+}
+
+function requestModeSwitch(target) {
+  if (target === mode) return;
+  const overlay = document.getElementById("overlay");
+  const tag = document.getElementById("overlayTag");
+  const text = document.getElementById("overlayText");
+
+  tag.className = "tag " + currentTeam;
+  tag.textContent = target === "spymaster" ? "スパイマスター" : "回答者";
+  text.textContent = target === "spymaster"
+    ? "画面をスパイマスター担当の人に渡してください。回答者には見せないでください。"
+    : "画面を回答者に渡してください。";
+
+  overlay.classList.remove("hidden");
+  overlay.dataset.target = target;
+}
+
+document.getElementById("btnSpy").addEventListener("click", () => requestModeSwitch("spymaster"));
+document.getElementById("btnOp").addEventListener("click", () => requestModeSwitch("operative"));
+document.getElementById("overlayBtn").addEventListener("click", () => {
+  const overlay = document.getElementById("overlay");
+  mode = overlay.dataset.target;
+  overlay.classList.add("hidden");
+  render();
+});
+document.getElementById("sendHintBtn").addEventListener("click", sendHint);
+document.getElementById("hintWordInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") sendHint();
+});
+document.getElementById("newGameBtn").addEventListener("click", newGame);
+
+newGame();
+</script>
+</body>
+</html>
